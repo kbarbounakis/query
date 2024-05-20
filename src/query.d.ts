@@ -1,4 +1,5 @@
 import {SyncSeriesEventEmitter} from '@themost/events';
+import {ExpressionBase} from './expressions';
 
 export declare type QueryFunc<T> = (value: T, ...param: any[]) => any;
 
@@ -32,6 +33,8 @@ export declare class QueryExpression {
         $div: string | '$div'
     }
 
+    $collection?: string;
+    joinCollection?: string;
     $select?: any;
     $delete?: any;
     $update?: any;
@@ -137,7 +140,7 @@ export declare class QueryExpression {
     toLocaleUpperCase(): this;
 
     resolvingMember: SyncSeriesEventEmitter<{ target: QueryExpression, member: string }>;
-    resolvingJoinMember: SyncSeriesEventEmitter<{ target: QueryExpression, member: string, fullyQualifiedMember?: string }>;
+    resolvingJoinMember: SyncSeriesEventEmitter<{ target: QueryExpression, member: string | ExpressionBase, fullyQualifiedMember?: string }>;
     resolvingMethod: SyncSeriesEventEmitter<{ target: QueryExpression, method: string }>;
 
 }

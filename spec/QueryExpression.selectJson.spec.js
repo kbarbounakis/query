@@ -1,4 +1,4 @@
-import {QueryField, SqlFormatter} from '../src/index';
+import {MemberExpression, MethodCallExpression, SqlFormatter} from '../src/index';
 import { QueryEntity, QueryExpression } from '../src/index';
 import { MemoryAdapter } from './test/TestMemoryAdapter';
 
@@ -23,26 +23,64 @@ describe('SqlFormatter', () => {
 
     it('should select json field', async () => {
         const Products = new QueryEntity('Products');
-        const query = new QueryExpression()
-            .select((x) => {
+        const query = new QueryExpression();
+        query.resolvingJoinMember.subscribe((event) => {
+           if (event.fullyQualifiedMember.startsWith('dimensions')) {
+               event.object = query.$collection;
+               event.member = new MethodCallExpression('jsonGet', [
+                   new MemberExpression(query.$collection + '.' + event.fullyQualifiedMember)
+               ]);
+           }
+        });
+        query.select((x) => {
                 // noinspection JSUnresolvedReference
                return {
                    id: x.id,
                    name: x.name,
-                   width: {
-                       $json: 'dimensions2.width'
-                   }
+                   width: x.dimensions.width
                }
             })
             .from(Products);
         const formatter = new SqlFormatter();
-        formatter.$json = function(expr) {
-            const parts = expr.split('.');
-            const [originalField] = parts.splice(0, 1);
-          return `json_extract(${this.escapeName(originalField)}, '$.${parts.join('.')}')`
+        formatter.$jsonGet = function(expr) {
+            if (typeof expr.$name !== 'string') {
+                throw new Error('Invalid json expression. Expected a string');
+            }
+            const parts = expr.$name.split('.');
+            const extract = this.escapeName(parts.splice(0, 2).join('.'));
+            return `json_extract(${extract}, '$.${parts.join('.')}')`
         };
         const sql = formatter.format(query);
-        expect(sql).toBe('SELECT "Products"."id", "Products"."name", "Products"."dimensions2"->>\'width\' AS "width" FROM "Products"');
+        expect(sql).toEqual('SELECT Products.id AS id, Products.name AS name, json_extract(Products.dimensions, \'$.width\') AS width FROM Products');
+    });
+
+
+    it('should select json array', async () => {
+        const Products = new QueryEntity('Products');
+        const query = new QueryExpression();
+        query.resolvingJoinMember.subscribe((event) => {
+            if (event.fullyQualifiedMember.startsWith('tags')) {
+                event.object = query.$collection;
+                event.member = new MethodCallExpression('jsonArray', [
+                    new MemberExpression(query.$collection + '.' + event.fullyQualifiedMember)
+                ]);
+            }
+        });
+        query.select((x) => {
+            // noinspection JSUnresolvedReference
+            return {
+                id: x.id,
+                name: x.name,
+                tags: x.dimensions.width
+            }
+        })
+            .from(Products);
+        const formatter = new SqlFormatter();
+        formatter.$jsonArray = function(expr) {
+            return `json_each(${this.escapeName(expr)}')`
+        };
+        const sql = formatter.format(query);
+        expect(sql).toEqual('SELECT Products.id AS id, Products.name AS name, json_extract(Products.dimensions, \'$.width\') AS width FROM Products');
     });
 
 

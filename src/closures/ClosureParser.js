@@ -740,6 +740,9 @@ class ClosureParser {
                         fullyQualifiedMember: fullyQualifiedMember
                     };
                     this.resolvingJoinMember.emit(event);
+                    if (typeof event.member !== 'string') {
+                        return event.member
+                    }
                     return new MemberExpression(event.object + '.' + event.member);
                 }
                 else {
