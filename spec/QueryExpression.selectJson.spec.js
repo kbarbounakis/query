@@ -1,6 +1,6 @@
 // noinspection SpellCheckingInspection
 
-import {MemberExpression, MethodCallExpression} from '../src/index';
+import {MemberExpression, MethodCallExpression, SqlUtils} from '../src/index';
 import { QueryEntity, QueryExpression } from '../src/index';
 import { SqliteFormatter } from '@themost/sqlite';
 import { MemoryAdapter } from './test/TestMemoryAdapter';
@@ -20,12 +20,14 @@ if (typeof SqliteFormatter.prototype.$jsonGet !== 'function') {
     SqliteFormatter.prototype.$jsonArray = function(expr) {
         return `json_each(${this.escapeName(expr)})`;
     }
-    const superEscape = SqliteFormatter.prototype.escape;
-    SqliteFormatter.prototype.escape = function(value, quoted) {
+    const superEscape = SqlUtils.escape;
+    SqlUtils.escape = function(value) {
         if (isObjectDeep(value)) {
             return `'${JSON.stringify(value)}'`;
+        } else {
+            const args =  Array.from(arguments)
+            return superEscape.apply(null, args);
         }
-        return superEscape.call(this, value, quoted);
     }
 }
 
@@ -221,6 +223,33 @@ describe('SqlFormatter', () => {
             expect(result).toBeTruthy();
             expect(result.id).toBeTruthy();
             expect(result.customer).toBeTruthy();
+        }
+    });
+
+    it('should select nested json field with method', async () => {
+        await createSimpleOrders(db);
+        const Orders = new QueryEntity('SimpleOrders');
+        const query = new QueryExpression();
+        query.resolvingJoinMember.subscribe(onResolvingJsonMember);
+        query.select((x) => {
+            // noinspection JSUnresolvedReference
+            return {
+                id: x.id,
+                customer: x.customer.description,
+                releaseYear: x.orderedItem.releaseDate.getFullYear()
+            }
+        })
+            .from(Orders);
+        const formatter = new MemoryFormatter();
+        const sql = formatter.format(query);
+        /**
+         * @type {Array<{id: number, customer: string, releaseYear: number}>}
+         */
+        const results = await db.executeAsync(sql, []);
+        expect(results).toBeTruthy();
+        for (const result of results) {
+            expect(result).toBeTruthy();
+            expect(result.releaseYear).toBeTruthy();
         }
     });
 
