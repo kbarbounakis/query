@@ -60,7 +60,7 @@ describe('SqlFormatter', () => {
         let results = await db.executeAsync(query);
         expect(results.length).toBeTruthy();
         for (const result of results) {
-            expect(result.orderYear).toBeInstanceOf(Number);
+            expect(typeof result.orderYear).toEqual('number');
         }
     });
 

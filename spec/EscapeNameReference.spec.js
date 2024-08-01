@@ -53,7 +53,7 @@ describe('EscapeNameReference', () => {
         let results = await db.executeAsync(query);
         expect(results.length).toEqual(1);
         const result0 = results[0];
-        expect(result0.maxPrice).toBeInstanceOf(Number);
+        expect(typeof result0.maxPrice).toEqual('number');
         expect(result0.maxPrice).toBeTruthy();
     });
 

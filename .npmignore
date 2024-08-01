@@ -37,3 +37,10 @@ tsconfig.json
 
 # codacy
 .codacy.yml
+
+# test
+jest.config.js
+jest.setup.js
+
+# jsconfig
+jsconfig.json
